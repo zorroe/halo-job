@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace 必须和 Mapper 接口全类名一致 -->
+<mapper namespace="com.zorroe.cloud.job.admin.mapper.JobInfoMapper">
+
+    <sql id="jobInfoColumn">
+       id               id,
+       job_name         jobName,
+       executor_handler executorHandler,
+       executor_param   executorParam,
+       job_status       jobStatus,
+       create_time      createTime,
+       update_time      updateTime
+    </sql>
+
+    <!-- 根据ID查询任务 -->
+    <select id="getJobById" resultType="JobInfo" parameterType="java.lang.Long">
+        SELECT
+        <include refid="jobInfoColumn"/>
+        FROM job_info
+        WHERE id = #{jobId}
+    </select>
+
+    <!-- 查询所有任务（第三步自动调度会用） -->
+    <select id="listAllJobs" resultType="JobInfo">
+        SELECT
+        <include refid="jobInfoColumn"/>
+        FROM job_info ORDER BY id DESC
+    </select>
+
+</mapper>

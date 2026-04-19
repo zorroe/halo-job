@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.5.13</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>com.zorroe.cloud</groupId>
+    <artifactId>halo-job</artifactId>
+    <version>${revision}</version>
+    <name>halo-job</name>
+    <description>halo-job</description>
+    <packaging>pom</packaging>
+
+    <modules>
+        <module>halo-job-admin</module>
+        <module>halo-job-core</module>
+        <module>halo-job-executor</module>
+    </modules>
+
+    <properties>
+        <revision>0.0.1-SNAPSHOT</revision>
+        <mybatis.version>3.0.3</mybatis.version>
+        <druid.version>1.2.20</druid.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>com.zorroe.cloud</groupId>
+                <artifactId>halo-job-core</artifactId>
+                <version>${revision}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.baomidou</groupId>
+                <artifactId>mybatis-plus-generator</artifactId>
+                <version>${mybatis-plus.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.mybatis.spring.boot</groupId>
+                <artifactId>mybatis-spring-boot-starter</artifactId>
+                <version>${mybatis.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.alibaba</groupId>
+                <artifactId>druid-spring-boot-starter</artifactId>
+                <version>${druid.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>
