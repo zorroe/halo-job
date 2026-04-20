@@ -24,6 +24,8 @@ public class JobInfo {
 
     private String cronExpression;
 
+    private String remark;
+
     private Date createTime;
 
     private Date updateTime;

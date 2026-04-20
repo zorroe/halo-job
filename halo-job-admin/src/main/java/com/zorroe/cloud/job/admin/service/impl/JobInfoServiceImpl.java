@@ -23,4 +23,19 @@ public class JobInfoServiceImpl implements JobInfoService {
     public List<JobInfo> listAllJobs() {
         return jobInfoMapper.listAllJobs();
     }
+
+    @Override
+    public void addJob(JobInfo jobInfo) {
+        jobInfoMapper.addJob(jobInfo);
+    }
+
+    @Override
+    public void updateJob(JobInfo jobInfo) {
+        jobInfoMapper.updateJob(jobInfo);
+    }
+
+    @Override
+    public void changeStatus(Long id, Integer status) {
+        jobInfoMapper.changeStatus(id, status);
+    }
 }

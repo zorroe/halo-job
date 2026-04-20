@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace 必须和 Mapper 接口全类名一致 -->
+<mapper namespace="com.zorroe.cloud.job.admin.mapper.JobExecutionLogMapper">
+
+    <sql id="jobExecutionLogColumn">
+        `id`,
+        job_id           jobId,
+        job_name         jobName,
+        executor_handler executorHandler,
+        executor_param   executorParam,
+        `status`,
+        error_msg        errorMsg,
+        execution_time   executionTime,
+        start_time       startTime,
+        end_time         endTime,
+        create_time      createTime
+    </sql>
+
+    <insert id="save">
+        INSERT INTO job_execution_log (job_id, job_name, executor_handler, executor_param, status, error_msg,
+                                       execution_time, start_time, end_time)
+        VALUES (#{jobId}, #{jobName}, #{executorHandler}, #{executorParam}, #{status}, #{errorMsg}, #{executionTime},
+                #{startTime}, #{endTime})
+    </insert>
+
+    <select id="listByPage" resultType="JobExecutionLog">
+        SELECT
+        <include refid="jobExecutionLogColumn"/>
+        FROM job_execution_log
+        ORDER BY start_time DESC
+    </select>
+</mapper>

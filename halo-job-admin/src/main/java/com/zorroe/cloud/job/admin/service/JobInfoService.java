@@ -6,7 +6,13 @@ import java.util.List;
 
 public interface JobInfoService {
 
-    public JobInfo getJobById(Long jobId);
+    JobInfo getJobById(Long jobId);
 
-    public List<JobInfo> listAllJobs();
+    List<JobInfo> listAllJobs();
+
+    void addJob(JobInfo jobInfo);
+
+    void updateJob(JobInfo jobInfo);
+
+    void changeStatus(Long id, Integer status);
 }

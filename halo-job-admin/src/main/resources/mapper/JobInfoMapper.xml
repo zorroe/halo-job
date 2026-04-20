@@ -15,6 +15,28 @@
        update_time      updateTime,
        cron_expression  cronExpression
     </sql>
+    <insert id="addJob">
+        INSERT INTO job_info (job_name, executor_handler, executor_param, job_status, create_time, update_time,
+                              cron_expression)
+        VALUES (#{jobName}, #{executorHandler}, #{executorParam}, #{jobStatus}, #{createTime}, #{updateTime},
+                #{cronExpression})
+    </insert>
+    <update id="updateJob">
+
+        UPDATE job_info
+        SET job_name         = #{jobName},
+            executor_handler = #{executorHandler},
+            executor_param   = #{executorParam},
+            job_status       = #{jobStatus},
+            update_time      = #{updateTime},
+            cron_expression  = #{cronExpression}
+        WHERE id = #{id}
+    </update>
+    <update id="changeStatus">
+        UPDATE job_info
+        SET job_status = #{status}
+        WHERE id = #{id}
+    </update>
 
     <!-- 根据ID查询任务 -->
     <select id="getJobById" resultType="JobInfo" parameterType="java.lang.Long">
