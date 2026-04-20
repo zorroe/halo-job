@@ -25,6 +25,7 @@
         <revision>0.0.1-SNAPSHOT</revision>
         <mybatis.version>3.0.3</mybatis.version>
         <druid.version>1.2.20</druid.version>
+        <quartz.version>2.3.2</quartz.version>
     </properties>
 
     <dependencyManagement>
@@ -53,6 +54,11 @@
                 <groupId>com.alibaba</groupId>
                 <artifactId>druid-spring-boot-starter</artifactId>
                 <version>${druid.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.quartz-scheduler</groupId>
+                <artifactId>quartz</artifactId>
+                <version>${quartz.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -12,7 +12,8 @@
        executor_param   executorParam,
        job_status       jobStatus,
        create_time      createTime,
-       update_time      updateTime
+       update_time      updateTime,
+       cron_expression  cronExpression
     </sql>
 
     <!-- 根据ID查询任务 -->

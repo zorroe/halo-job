@@ -22,6 +22,8 @@ public class JobInfo {
 
     private Integer jobStatus;         // 任务状态
 
+    private String cronExpression;
+
     private Date createTime;
 
     private Date updateTime;
