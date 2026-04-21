@@ -44,8 +44,8 @@ public class ExecutorAutoRegister implements CommandLineRunner {
 
     private void beat() {
         try {
-            template.postForObject(adminAddress + "/executor/api/beat?address={address}",
-                    null, String.class, address);
+            template.postForObject(adminAddress + "/executor/api/beat?name={name}&address={address}",
+                    null, String.class, name, address);
         } catch (Exception e) {
         }
     }

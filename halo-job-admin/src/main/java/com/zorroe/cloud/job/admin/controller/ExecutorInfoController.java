@@ -26,9 +26,11 @@ public class ExecutorInfoController {
     }
 
     @PostMapping("/beat")
-    public Result<String> beat(@RequestParam String address) {
+    public Result<String> beat(@RequestParam String name,
+                               @RequestParam String address) {
         ExecutorInfo info = new ExecutorInfo();
         info.setExecutorAddress(address);
+        info.setExecutorName(name);
         executorInfoService.register(info);
         return Result.success();
     }

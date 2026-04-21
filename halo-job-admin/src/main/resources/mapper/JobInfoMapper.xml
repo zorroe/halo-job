@@ -6,7 +6,7 @@
 <mapper namespace="com.zorroe.cloud.job.admin.mapper.JobInfoMapper">
 
     <sql id="jobInfoColumn">
-       id               id,
+       id,
        job_name         jobName,
        executor_handler executorHandler,
        executor_param   executorParam,
