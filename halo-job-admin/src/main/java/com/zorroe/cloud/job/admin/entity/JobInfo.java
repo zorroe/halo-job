@@ -26,6 +26,12 @@ public class JobInfo {
 
     private String remark;
 
+    private Integer routeStrategy;
+
+    private Integer blockStrategy;
+
+    private Integer retryCount;
+
     private Date createTime;
 
     private Date updateTime;

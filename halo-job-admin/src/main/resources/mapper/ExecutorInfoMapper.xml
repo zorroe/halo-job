@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="com.zorroe.cloud.job.admin.mapper.ExecutorInfoMapper">
+    <sql id="executorInfoColumns">
+        `id`,
+        executor_name    executorName,
+        executor_address executorAddress,
+        heartbeat_time   heartbeatTime,
+        `status`,
+        create_time      createTime
+    </sql>
+
+    <insert id="insertOrUpdate">
+        insert into executor_info (executor_name, executor_address, status)
+        values (#{executorName}, #{executorAddress}, 1)
+        on duplicate key update status=1,
+                                heartbeat_time=now()
+    </insert>
+
+    <select id="listOnline" resultType="ExecutorInfo">
+        select
+        <include refid="executorInfoColumns"/>
+        from executor_info
+        where status = 1
+    </select>
+
+    <update id="updateOffline">
+        update executor_info
+        set status=0
+        where heartbeat_time &lt; date_sub(now(), interval 30 second)
+    </update>
+</mapper>

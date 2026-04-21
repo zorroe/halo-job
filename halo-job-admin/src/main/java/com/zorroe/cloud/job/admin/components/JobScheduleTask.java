@@ -1,7 +1,9 @@
 package com.zorroe.cloud.job.admin.components;
 
+import cn.hutool.core.text.CharSequenceUtil;
 import com.zorroe.cloud.job.admin.entity.JobExecutionLog;
 import com.zorroe.cloud.job.admin.entity.JobInfo;
+import com.zorroe.cloud.job.admin.service.ExecutorInfoService;
 import com.zorroe.cloud.job.admin.service.JobExecutionLogService;
 import com.zorroe.cloud.job.admin.service.JobInfoService;
 import com.zorroe.cloud.job.core.common.JobStatusEnum;
@@ -16,9 +18,7 @@ import org.springframework.web.client.RestTemplate;
 import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.List;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 @Slf4j
 @Component
@@ -31,6 +31,9 @@ public class JobScheduleTask {
     private JobExecutionLogService jobExecutionLogService;
 
     @Resource
+    private ExecutorInfoService executorInfoService;
+
+    @Resource
     private RestTemplate restTemplate;
 
     @Resource
@@ -40,12 +43,18 @@ public class JobScheduleTask {
     private String executorAddress;
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
+    private final ThreadPoolExecutor pool = new ThreadPoolExecutor(
+            10, 20, 60L, TimeUnit.SECONDS, new LinkedBlockingQueue<>(200)
+    );
     private static final String LOCK_KEY_PREFIX = "job:lock:";
-    private static final long LOCK_TIMEOUT = 5; // 锁超时5分钟，防止死锁
+    private static final String RUNNING = "job:running:";
+    private static final long LOCK_TIMEOUT = 10; // 锁超时5分钟，防止死锁
+
 
     @PostConstruct
     public void startSchedule() {
         scheduler.scheduleAtFixedRate(this::scanAndExecute, 0, 1, TimeUnit.SECONDS);
+        scheduler.scheduleAtFixedRate(executorInfoService::checkHeartBeat, 0, 10, TimeUnit.SECONDS);
     }
 
     private void scanAndExecute() {
@@ -59,16 +68,17 @@ public class JobScheduleTask {
                     continue;
                 }
                 // 判断 cron 是否匹配当前时间
-                if (CronUtils.isMatch(job.getCronExpression())) {
-                    // 🔒 核心：加锁防重复执行
-                    String lockKey = LOCK_KEY_PREFIX + job.getId();
-                    boolean locked = redisUtil.lock(lockKey, LOCK_TIMEOUT, TimeUnit.MINUTES);
-                    if (locked) {
-                        try {
-                            executeJob(job);
-                        } finally {
-                            redisUtil.unlock(lockKey);
-                        }
+                if (!CronUtils.isMatch(job.getCronExpression())) {
+                    continue;
+                }
+                // 🔒 核心：加锁防重复执行
+                String lockKey = LOCK_KEY_PREFIX + job.getId();
+                boolean locked = redisUtil.lock(lockKey, LOCK_TIMEOUT, TimeUnit.MINUTES);
+                if (locked) {
+                    try {
+                        pool.execute(() -> executeJob(job));
+                    } finally {
+                        redisUtil.unlock(lockKey);
                     }
                 }
             }
@@ -89,21 +99,37 @@ public class JobScheduleTask {
 
 
         try {
+            String address = executorInfoService.route(job.getId(), job.getRouteStrategy());
+            if (CharSequenceUtil.isEmpty(address)) {
+                log.error("【自动调度失败】没有可用的执行器");
+                return;
+            }
             String url = String.format("%s/executor/run?handler=%s&param=%s",
-                    executorAddress,
+                    address,
                     job.getExecutorHandler(),
                     job.getExecutorParam());
-            String result = restTemplate.getForObject(url, String.class);
+
+            int retry = job.getRetryCount() == null ? 0 : job.getRetryCount();
+
+            for (int i = 0; i <= retry; i++) {
+                try {
+                    restTemplate.getForObject(url, String.class);
+                    break;
+                } catch (Exception e) {
+                    if (i == retry) throw e;
+                }
+            }
             jobExecutionLog.setStatus(1); // 成功
-            log.info("【自动调度执行】任务: {}, 结果: {}", job.getJobName(), result);
+            log.info("【自动调度成功】{}", job.getJobName());
         } catch (Exception e) {
             jobExecutionLog.setStatus(0); // 失败
             jobExecutionLog.setErrorMsg(e.getMessage());
-            log.error("【自动调度失败】任务: {}", job.getJobName());
+            log.error("【自动调度失败】{}", job.getJobName());
         } finally {
             long end = System.currentTimeMillis();
             jobExecutionLog.setEndTime(new Date());
             jobExecutionLog.setExecutionTime(end - start);
+            jobExecutionLog.setStatus(0);
             jobExecutionLogService.insertLog(jobExecutionLog);
         }
     }

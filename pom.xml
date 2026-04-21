@@ -26,6 +26,7 @@
         <mybatis.version>3.0.3</mybatis.version>
         <druid.version>1.2.20</druid.version>
         <quartz.version>2.3.2</quartz.version>
+        <hutool.version>5.8.38</hutool.version>
     </properties>
 
     <dependencyManagement>
@@ -59,6 +60,11 @@
                 <groupId>org.quartz-scheduler</groupId>
                 <artifactId>quartz</artifactId>
                 <version>${quartz.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>cn.hutool</groupId>
+                <artifactId>hutool-all</artifactId>
+                <version>${hutool.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
