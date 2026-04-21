@@ -1,4 +1,4 @@
-package com.zorroe.cloud.job.executor.component;
+package com.zorroe.cloud.job.core.component;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
