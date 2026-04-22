@@ -3,10 +3,10 @@ package com.zorroe.cloud.job.core.config;
 import com.zorroe.cloud.job.core.component.ExecutorAutoRegister;
 import com.zorroe.cloud.job.core.component.JobAnnotationScanner;
 import com.zorroe.cloud.job.core.controller.ExecutorController;
-import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-@AutoConfiguration
+@Configuration
 public class ExecutorAutoConfig {
 
     // 1. 注册任务扫描器
