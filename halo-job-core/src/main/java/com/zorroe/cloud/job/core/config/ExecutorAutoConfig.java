@@ -23,7 +23,7 @@ public class ExecutorAutoConfig {
 
     // 3. 注册核心 Controller（/executor/run）
     @Bean
-    public ExecutorController executorCoreController() {
+    public ExecutorController executorController() {
         return new ExecutorController();
     }
 }
