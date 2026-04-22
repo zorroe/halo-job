@@ -24,6 +24,8 @@ public class JobInfo {
 
     private String cronExpression;
 
+    private Long nextExecuteTime;     // 下次执行时间
+
     private String remark;
 
     private Integer routeStrategy;

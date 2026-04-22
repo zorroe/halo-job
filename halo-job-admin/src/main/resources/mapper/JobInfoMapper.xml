@@ -13,30 +13,51 @@
        job_status       jobStatus,
        create_time      createTime,
        update_time      updateTime,
-       cron_expression  cronExpression
+       cron_expression  cronExpression,
+       next_execute_time nextExecuteTime
     </sql>
-    <insert id="addJob">
-        INSERT INTO job_info (job_name, executor_handler, executor_param, job_status, create_time, update_time,
-                              cron_expression)
-        VALUES (#{jobName}, #{executorHandler}, #{executorParam}, #{jobStatus}, #{createTime}, #{updateTime},
-                #{cronExpression})
+    <insert id="addJob" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO job_info (job_name, executor_handler, executor_param, job_status, cron_expression,
+                              next_execute_time, retry_count, route_strategy, create_time, update_time)
+        VALUES (#{jobName}, #{executorHandler}, #{executorParam}, #{jobStatus}, #{cronExpression},
+                #{nextExecuteTime}, #{retryCount}, #{routeStrategy}, NOW(), NOW())
     </insert>
     <update id="updateJob">
-
         UPDATE job_info
         SET job_name         = #{jobName},
             executor_handler = #{executorHandler},
             executor_param   = #{executorParam},
             job_status       = #{jobStatus},
-            update_time      = #{updateTime},
-            cron_expression  = #{cronExpression}
+            cron_expression  = #{cronExpression},
+            retry_count      = #{retryCount},
+            route_strategy   = #{routeStrategy},
+            update_time      = NOW()
         WHERE id = #{id}
     </update>
     <update id="changeStatus">
         UPDATE job_info
-        SET job_status = #{status}
+        SET job_status  = #{status},
+            update_time = NOW()
         WHERE id = #{id}
     </update>
+
+    <update id="updateNextExecuteTime">
+        UPDATE job_info
+        SET next_execute_time = #{nextExecuteTime},
+            update_time       = NOW()
+        WHERE id = #{id}
+    </update>
+
+
+    <select id="listDueJobs" resultType="JobInfo">
+        SELECT
+        <include refid="jobInfoColumn"/>
+        FROM job_info
+        WHERE job_status = 1
+        AND next_execute_time &lt;= #{currentTime}
+        ORDER BY next_execute_time ASC
+    </select>
+
 
     <!-- 根据ID查询任务 -->
     <select id="getJobById" resultType="JobInfo" parameterType="java.lang.Long">

@@ -15,4 +15,9 @@ public interface JobInfoService {
     void updateJob(JobInfo jobInfo);
 
     void changeStatus(Long id, Integer status);
+
+    List<JobInfo> listDueJobs(long currentTime);
+
+    void updateNextExecuteTime(Long id, Long nextExecuteTime);
+
 }
