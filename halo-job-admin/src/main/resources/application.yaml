@@ -1,0 +1,25 @@
+server:
+  port: 8080
+executor:
+  address: http://localhost:9090
+
+spring:
+  application:
+    name: halo-job-admin
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    type: com.alibaba.druid.pool.DruidDataSource
+    url: jdbc:mysql://192.168.1.101:13306/halo-job?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: halo-job
+    password: ApNpmj7afxEWNJrD
+  data:
+    redis:
+      host: 192.168.1.101
+      port: 16379
+      password: redis_KDDsxQ
+      database: 0
+
+
+mybatis:
+  mapper-locations: classpath:mapper/**/*.xml
+  type-aliases-package: com.zorroe.cloud.job.admin.entity
