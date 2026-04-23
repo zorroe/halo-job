@@ -27,11 +27,24 @@ public class ExecutorController {
         this.executorJobRunner = executorJobRunner;
     }
 
+    /**
+     * 接收新版 POST 调度请求，并返回结构化执行结果。
+     *
+     * @param request 调度中心下发的任务请求
+     * @return 执行结果
+     */
     @PostMapping("/executor/run")
     public Result<TriggerJobResponse> run(@RequestBody TriggerJobRequest request) {
         return Result.success(execute(request));
     }
 
+    /**
+     * 兼容旧版 GET 触发方式，内部统一转换为标准任务请求。
+     *
+     * @param handler 任务处理器名称
+     * @param param 任务参数
+     * @return 执行结果
+     */
     @GetMapping("/executor/run")
     public Result<TriggerJobResponse> runLegacy(
             @RequestParam String handler,
@@ -46,6 +59,12 @@ public class ExecutorController {
         return Result.success(execute(request));
     }
 
+    /**
+     * 校验并标准化请求后，把任务交给运行器按阻塞策略执行。
+     *
+     * @param request 原始触发请求
+     * @return 执行结果
+     */
     private TriggerJobResponse execute(TriggerJobRequest request) {
         TriggerJobRequest normalizedRequest = normalizeRequest(request);
         if (normalizedRequest.getHandler() == null || normalizedRequest.getHandler().isBlank()) {
@@ -60,6 +79,12 @@ public class ExecutorController {
         return executorJobRunner.run(normalizedRequest, () -> invokeHandler(holder, normalizedRequest));
     }
 
+    /**
+     * 补齐默认字段，保证后续执行阶段能够按统一规则处理请求。
+     *
+     * @param request 原始触发请求
+     * @return 标准化后的请求
+     */
     private TriggerJobRequest normalizeRequest(TriggerJobRequest request) {
         TriggerJobRequest normalized = request == null ? new TriggerJobRequest() : request;
         normalized.setBlockStrategy(BlockStrategyEnum.getByCode(normalized.getBlockStrategy()).getCode());
@@ -78,6 +103,13 @@ public class ExecutorController {
         return normalized;
     }
 
+    /**
+     * 绑定任务上下文并反射调用实际任务方法，把异常转换为统一执行结果。
+     *
+     * @param holder 任务方法持有对象
+     * @param request 标准化后的请求
+     * @return 执行结果
+     */
     private TriggerJobResponse invokeHandler(JobMethodRegistry.JobMethodHolder holder, TriggerJobRequest request) {
         long startTime = System.currentTimeMillis();
         HaloJobContext context = HaloJobContext.fromRequest(request);
@@ -105,6 +137,16 @@ public class ExecutorController {
         }
     }
 
+    /**
+     * 按 Halo-Job 约定的签名规则反射调用任务方法。
+     *
+     * @param method 目标方法
+     * @param bean 目标 Bean
+     * @param param 字符串参数
+     * @param context 任务上下文
+     * @return 方法返回值
+     * @throws Exception 反射调用异常
+     */
     private Object invokeMethod(Method method, Object bean, String param, HaloJobContext context) throws Exception {
         Class<?>[] types = method.getParameterTypes();
         if (types.length == 0) {
@@ -122,6 +164,12 @@ public class ExecutorController {
         throw new IllegalStateException("unsupported halo job method signature: " + method);
     }
 
+    /**
+     * 从异常链中提取更适合返回给调度中心的错误文案。
+     *
+     * @param throwable 原始异常
+     * @return 错误文案
+     */
     private String resolveMessage(Throwable throwable) {
         if (throwable == null) {
             return "任务执行失败";

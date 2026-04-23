@@ -7,10 +7,10 @@ import java.util.Date;
 public class CronUtils {
 
     /**
-     * 判断当前时间是否匹配 cron 表达式
+     * 判断当前时间是否命中指定的 Cron 表达式。
      *
      * @param cron Cron 表达式
-     * @return 是否匹配
+     * @return 当前时间是否匹配
      */
     public static boolean isMatch(String cron) {
         if (cron == null || cron.trim().isEmpty()) {
@@ -26,11 +26,11 @@ public class CronUtils {
     }
 
     /**
-     * 获取下一个符合 Cron 表达式的执行时间
+     * 从指定起点开始计算下一次符合 Cron 表达式的执行时间。
      *
      * @param cron Cron 表达式
      * @param fromDate 起始时间
-     * @return 下一个执行时间
+     * @return 下一次执行时间
      */
     public static Date getNextFireTime(String cron, Date fromDate) {
         if (cron == null || cron.trim().isEmpty() || fromDate == null) {
@@ -46,7 +46,7 @@ public class CronUtils {
     }
 
     /**
-     * 验证 Cron 表达式是否合法
+     * 验证 Cron 表达式是否合法可用。
      *
      * @param cron Cron 表达式
      * @return 是否合法
@@ -65,7 +65,11 @@ public class CronUtils {
     }
 
     /**
-     * ✅ 新增：获取下一个执行时间（毫秒时间戳）
+     * 获取下一次执行时间的毫秒时间戳，便于直接落库存储。
+     *
+     * @param cron Cron 表达式
+     * @param fromDate 起始时间
+     * @return 下一次执行时间戳，无法计算时返回 {@code null}
      */
     public static Long getNextFireTimeMillis(String cron, Date fromDate) {
         if (cron == null || cron.trim().isEmpty() || fromDate == null) {

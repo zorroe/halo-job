@@ -22,6 +22,12 @@ public class HaloJobContext {
 
     private String triggerType;
 
+    /**
+     * 把调度请求转换为执行线程可直接读取的任务上下文。
+     *
+     * @param request 任务触发请求
+     * @return 任务上下文对象
+     */
     public static HaloJobContext fromRequest(TriggerJobRequest request) {
         HaloJobContext context = new HaloJobContext();
         if (request == null) {

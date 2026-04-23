@@ -17,6 +17,12 @@ public enum ExecutorRouteEnum {
     private final Integer code;
     private final String desc;
 
+    /**
+     * 根据路由策略编码返回对应枚举，未配置或无法识别时默认使用轮询。
+     *
+     * @param code 路由策略编码
+     * @return 对应的路由策略
+     */
     public static ExecutorRouteEnum getByCode(Integer code) {
         if (code == null) {
             return ROUND;
@@ -29,6 +35,11 @@ public enum ExecutorRouteEnum {
         return ROUND;
     }
 
+    /**
+     * 判断当前路由策略是否会把任务广播到所有在线执行器。
+     *
+     * @return 是否为分片广播策略
+     */
     public boolean isBroadcast() {
         return this == SHARDING_BROADCAST;
     }

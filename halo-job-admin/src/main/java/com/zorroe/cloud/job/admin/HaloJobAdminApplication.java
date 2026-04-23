@@ -8,6 +8,11 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 @SpringBootApplication
 public class HaloJobAdminApplication {
 
+    /**
+     * 启动调度中心应用。
+     *
+     * @param args 启动参数
+     */
     public static void main(String[] args) {
         SpringApplication.run(HaloJobAdminApplication.class, args);
     }

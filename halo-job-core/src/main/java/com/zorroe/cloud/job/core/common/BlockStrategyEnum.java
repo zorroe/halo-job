@@ -13,6 +13,12 @@ public enum BlockStrategyEnum {
     private final Integer code;
     private final String desc;
 
+    /**
+     * 根据阻塞策略编码获取枚举，未配置时默认进入排队等待。
+     *
+     * @param code 阻塞策略编码
+     * @return 对应的阻塞策略
+     */
     public static BlockStrategyEnum getByCode(Integer code) {
         if (code == null) {
             return QUEUE_WAIT;

@@ -7,9 +7,17 @@ import java.lang.annotation.*;
 @Documented
 public @interface HaloJob {
 
-    // 任务名称（handler）
+    /**
+     * 定义任务处理器名称，调度中心通过该名称路由到具体方法。
+     *
+     * @return 任务 handler 标识
+     */
     String value();
 
-    // 任务描述
+    /**
+     * 为任务补充说明信息，便于后续管理端展示和维护。
+     *
+     * @return 任务描述
+     */
     String desc() default "";
 }
