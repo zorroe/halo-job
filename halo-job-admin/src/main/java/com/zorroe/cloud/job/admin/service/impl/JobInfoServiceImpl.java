@@ -3,6 +3,8 @@ package com.zorroe.cloud.job.admin.service.impl;
 import com.zorroe.cloud.job.admin.entity.JobInfo;
 import com.zorroe.cloud.job.admin.mapper.JobInfoMapper;
 import com.zorroe.cloud.job.admin.service.JobInfoService;
+import com.zorroe.cloud.job.core.ExecutorRouteEnum;
+import com.zorroe.cloud.job.core.common.BlockStrategyEnum;
 import com.zorroe.cloud.job.core.util.CronUtils;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -32,17 +34,27 @@ public class JobInfoServiceImpl implements JobInfoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addJob(JobInfo jobInfo) {
-        // 设置默认值
         if (jobInfo.getJobStatus() == null) {
             jobInfo.setJobStatus(1);
         }
         if (jobInfo.getRetryCount() == null) {
             jobInfo.setRetryCount(0);
         }
+        if (jobInfo.getRouteStrategy() == null) {
+            jobInfo.setRouteStrategy(ExecutorRouteEnum.ROUND.getCode());
+        }
+        if (jobInfo.getBlockStrategy() == null) {
+            jobInfo.setBlockStrategy(BlockStrategyEnum.QUEUE_WAIT.getCode());
+        }
 
-        // ✅ 计算下次执行时间
         if (jobInfo.getCronExpression() != null && !jobInfo.getCronExpression().trim().isEmpty()) {
+            if (!CronUtils.isValid(jobInfo.getCronExpression())) {
+                throw new IllegalArgumentException("无效的 Cron 表达式");
+            }
             Long nextTime = CronUtils.getNextFireTimeMillis(jobInfo.getCronExpression(), new Date());
+            if (nextTime == null) {
+                throw new IllegalArgumentException("无法计算下次执行时间");
+            }
             jobInfo.setNextExecuteTime(nextTime);
             log.info("任务 [{}] 下次执行时间: {}", jobInfo.getJobName(), new Date(nextTime));
         }
@@ -53,9 +65,24 @@ public class JobInfoServiceImpl implements JobInfoService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateJob(JobInfo jobInfo) {
-        // 如果更新了 Cron，重新计算下次执行时间
+        if (jobInfo.getRouteStrategy() == null) {
+            jobInfo.setRouteStrategy(ExecutorRouteEnum.ROUND.getCode());
+        }
+        if (jobInfo.getBlockStrategy() == null) {
+            jobInfo.setBlockStrategy(BlockStrategyEnum.QUEUE_WAIT.getCode());
+        }
+        if (jobInfo.getRetryCount() == null) {
+            jobInfo.setRetryCount(0);
+        }
+
         if (jobInfo.getCronExpression() != null) {
+            if (!CronUtils.isValid(jobInfo.getCronExpression())) {
+                throw new IllegalArgumentException("无效的 Cron 表达式");
+            }
             Long nextTime = CronUtils.getNextFireTimeMillis(jobInfo.getCronExpression(), new Date());
+            if (nextTime == null) {
+                throw new IllegalArgumentException("无法计算下次执行时间");
+            }
             jobInfo.setNextExecuteTime(nextTime);
         }
         jobInfoMapper.updateJob(jobInfo);

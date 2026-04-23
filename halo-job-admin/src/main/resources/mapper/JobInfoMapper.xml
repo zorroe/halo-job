@@ -2,38 +2,71 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-<!-- namespace 必须和 Mapper 接口全类名一致 -->
 <mapper namespace="com.zorroe.cloud.job.admin.mapper.JobInfoMapper">
 
     <sql id="jobInfoColumn">
-       id,
-       job_name         jobName,
-       executor_handler executorHandler,
-       executor_param   executorParam,
-       job_status       jobStatus,
-       create_time      createTime,
-       update_time      updateTime,
-       cron_expression  cronExpression,
-       next_execute_time nextExecuteTime
+        id,
+        job_name          jobName,
+        executor_handler  executorHandler,
+        executor_param    executorParam,
+        job_status        jobStatus,
+        remark            remark,
+        route_strategy    routeStrategy,
+        block_strategy    blockStrategy,
+        retry_count       retryCount,
+        create_time       createTime,
+        update_time       updateTime,
+        cron_expression   cronExpression,
+        next_execute_time nextExecuteTime
     </sql>
+
     <insert id="addJob" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO job_info (job_name, executor_handler, executor_param, job_status, cron_expression,
-                              next_execute_time, retry_count, route_strategy, create_time, update_time)
-        VALUES (#{jobName}, #{executorHandler}, #{executorParam}, #{jobStatus}, #{cronExpression},
-                #{nextExecuteTime}, #{retryCount}, #{routeStrategy}, NOW(), NOW())
+        INSERT INTO job_info (
+            job_name,
+            executor_handler,
+            executor_param,
+            job_status,
+            cron_expression,
+            next_execute_time,
+            retry_count,
+            route_strategy,
+            block_strategy,
+            remark,
+            create_time,
+            update_time
+        )
+        VALUES (
+            #{jobName},
+            #{executorHandler},
+            #{executorParam},
+            #{jobStatus},
+            #{cronExpression},
+            #{nextExecuteTime},
+            #{retryCount},
+            #{routeStrategy},
+            #{blockStrategy},
+            #{remark},
+            NOW(),
+            NOW()
+        )
     </insert>
+
     <update id="updateJob">
         UPDATE job_info
-        SET job_name         = #{jobName},
-            executor_handler = #{executorHandler},
-            executor_param   = #{executorParam},
-            job_status       = #{jobStatus},
-            cron_expression  = #{cronExpression},
-            retry_count      = #{retryCount},
-            route_strategy   = #{routeStrategy},
-            update_time      = NOW()
+        SET job_name          = #{jobName},
+            executor_handler  = #{executorHandler},
+            executor_param    = #{executorParam},
+            job_status        = #{jobStatus},
+            remark            = #{remark},
+            cron_expression   = #{cronExpression},
+            next_execute_time = #{nextExecuteTime},
+            retry_count       = #{retryCount},
+            route_strategy    = #{routeStrategy},
+            block_strategy    = #{blockStrategy},
+            update_time       = NOW()
         WHERE id = #{id}
     </update>
+
     <update id="changeStatus">
         UPDATE job_info
         SET job_status  = #{status},
@@ -48,18 +81,15 @@
         WHERE id = #{id}
     </update>
 
-
     <select id="listDueJobs" resultType="JobInfo">
         SELECT
         <include refid="jobInfoColumn"/>
         FROM job_info
         WHERE job_status = 1
-        AND next_execute_time &lt;= #{currentTime}
+          AND next_execute_time &lt;= #{currentTime}
         ORDER BY next_execute_time ASC
     </select>
 
-
-    <!-- 根据ID查询任务 -->
     <select id="getJobById" resultType="JobInfo" parameterType="java.lang.Long">
         SELECT
         <include refid="jobInfoColumn"/>
@@ -67,11 +97,11 @@
         WHERE id = #{jobId}
     </select>
 
-    <!-- 查询所有任务（第三步自动调度会用） -->
     <select id="listAllJobs" resultType="JobInfo">
         SELECT
         <include refid="jobInfoColumn"/>
-        FROM job_info ORDER BY id DESC
+        FROM job_info
+        ORDER BY id DESC
     </select>
 
 </mapper>

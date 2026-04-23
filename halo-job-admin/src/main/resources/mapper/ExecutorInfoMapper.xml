@@ -2,7 +2,6 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
         "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
-
 <mapper namespace="com.zorroe.cloud.job.admin.mapper.ExecutorInfoMapper">
     <sql id="executorInfoColumns">
         `id`,
@@ -14,22 +13,24 @@
     </sql>
 
     <insert id="insertOrUpdate">
-        insert into executor_info (executor_name, executor_address, status)
-        values (#{executorName}, #{executorAddress}, 1)
-        on duplicate key update status=1,
-                                heartbeat_time=now()
+        INSERT INTO executor_info (executor_name, executor_address, status)
+        VALUES (#{executorName}, #{executorAddress}, 1)
+        ON DUPLICATE KEY UPDATE status = 1,
+                                executor_address = VALUES(executor_address),
+                                heartbeat_time = NOW()
     </insert>
 
     <select id="listOnline" resultType="ExecutorInfo">
-        select
+        SELECT
         <include refid="executorInfoColumns"/>
-        from executor_info
-        where status = 1
+        FROM executor_info
+        WHERE status = 1
+        ORDER BY executor_name ASC, executor_address ASC
     </select>
 
     <update id="updateOffline">
-        update executor_info
-        set status=0
-        where heartbeat_time &lt; date_sub(now(), interval 30 second)
+        UPDATE executor_info
+        SET status = 0
+        WHERE heartbeat_time &lt; date_sub(now(), interval 30 second)
     </update>
 </mapper>

@@ -3,6 +3,7 @@ package com.zorroe.cloud.job.core.component;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.concurrent.Executors;
@@ -20,12 +21,17 @@ public class ExecutorAutoRegister implements CommandLineRunner {
     @Value("${executor.name:default-executor}")
     private String name;
 
+    @Value("${executor.address:}")
+    private String configuredAddress;
+
     private String address;
-    private RestTemplate template = new RestTemplate();
+    private final RestTemplate template = new RestTemplate();
 
     @Override
-    public void run(String... args) throws Exception {
-        address = "http://localhost:" + port;
+    public void run(String... args) {
+        address = StringUtils.hasText(configuredAddress)
+                ? configuredAddress
+                : "http://localhost:" + port;
         register();
 
         Executors.newSingleThreadScheduledExecutor().scheduleAtFixedRate(
@@ -35,18 +41,27 @@ public class ExecutorAutoRegister implements CommandLineRunner {
 
     private void register() {
         try {
-            template.postForObject(adminAddress + "/executor/api/register?name={name}&address={address}",
-                    null, String.class,
-                    name, address);
-        } catch (Exception e) {
+            template.postForObject(
+                    adminAddress + "/executor/api/register?name={name}&address={address}",
+                    null,
+                    String.class,
+                    name,
+                    address
+            );
+        } catch (Exception ignored) {
         }
     }
 
     private void beat() {
         try {
-            template.postForObject(adminAddress + "/executor/api/beat?name={name}&address={address}",
-                    null, String.class, name, address);
-        } catch (Exception e) {
+            template.postForObject(
+                    adminAddress + "/executor/api/beat?name={name}&address={address}",
+                    null,
+                    String.class,
+                    name,
+                    address
+            );
+        } catch (Exception ignored) {
         }
     }
 }
