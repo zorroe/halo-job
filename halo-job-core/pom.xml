@@ -10,7 +10,7 @@
     </parent>
     <artifactId>halo-job-core</artifactId>
     <name>halo-job-core</name>
-    <description>halo-job-core</description>
+    <description>halo-job executor sdk and shared contract</description>
 
     <dependencies>
         <dependency>
