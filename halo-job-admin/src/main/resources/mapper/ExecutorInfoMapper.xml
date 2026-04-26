@@ -7,30 +7,65 @@
         `id`,
         executor_name    executorName,
         executor_address executorAddress,
+        executor_group   executorGroup,
+        executor_app     executorApp,
+        metadata,
+        version,
         heartbeat_time   heartbeatTime,
         `status`,
         create_time      createTime
     </sql>
 
     <insert id="insertOrUpdate">
-        INSERT INTO executor_info (executor_name, executor_address, status)
-        VALUES (#{executorName}, #{executorAddress}, 1)
-        ON DUPLICATE KEY UPDATE status = 1,
-                                executor_address = VALUES(executor_address),
+        INSERT INTO executor_info (
+            executor_name,
+            executor_address,
+            executor_group,
+            executor_app,
+            metadata,
+            version,
+            status
+        )
+        VALUES (
+            #{executorName},
+            #{executorAddress},
+            #{executorGroup},
+            #{executorApp},
+            #{metadata},
+            #{version},
+            1
+        )
+        ON DUPLICATE KEY UPDATE executor_name = VALUES(executor_name),
+                                executor_group = VALUES(executor_group),
+                                executor_app = VALUES(executor_app),
+                                metadata = VALUES(metadata),
+                                version = VALUES(version),
+                                status = 1,
                                 heartbeat_time = NOW()
     </insert>
 
-    <select id="listOnline" resultType="ExecutorInfo">
+    <select id="listExecutors" resultType="ExecutorInfo">
         SELECT
         <include refid="executorInfoColumns"/>
         FROM executor_info
-        WHERE status = 1
-        ORDER BY executor_name ASC, executor_address ASC
+        <where>
+            <if test="executorGroup != null and executorGroup != ''">
+                AND executor_group = #{executorGroup}
+            </if>
+            <if test="executorApp != null and executorApp != ''">
+                AND executor_app = #{executorApp}
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY executor_group ASC, executor_app ASC, executor_name ASC, executor_address ASC
     </select>
 
     <update id="updateOffline">
         UPDATE executor_info
         SET status = 0
-        WHERE heartbeat_time &lt; date_sub(now(), interval 30 second)
+        WHERE status = 1
+          AND heartbeat_time &lt; date_sub(now(), interval 30 second)
     </update>
 </mapper>

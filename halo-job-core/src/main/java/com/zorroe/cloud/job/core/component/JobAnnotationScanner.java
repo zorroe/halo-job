@@ -1,13 +1,13 @@
 package com.zorroe.cloud.job.core.component;
 
 import com.zorroe.cloud.job.core.anno.HaloJob;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
-import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 public class JobAnnotationScanner implements ApplicationContextAware {
 
@@ -25,10 +25,23 @@ public class JobAnnotationScanner implements ApplicationContextAware {
                 HaloJob anno = method.getAnnotation(HaloJob.class);
                 if (anno != null) {
                     String handler = anno.value();
-                    JobMethodRegistry.register(handler, bean, method);
+                    JobMethodRegistry.register(
+                            handler,
+                            anno.desc(),
+                            buildMethodSignature(method),
+                            bean,
+                            method
+                    );
                     System.out.println("【Halo-Job-Core】注册任务：handler = " + handler);
                 }
             }
         }
+    }
+
+    private String buildMethodSignature(Method method) {
+        String params = Arrays.stream(method.getParameterTypes())
+                .map(Class::getSimpleName)
+                .collect(Collectors.joining(", "));
+        return method.getReturnType().getSimpleName() + " " + method.getName() + "(" + params + ")";
     }
 }

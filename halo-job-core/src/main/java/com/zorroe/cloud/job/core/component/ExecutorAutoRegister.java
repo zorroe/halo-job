@@ -1,5 +1,7 @@
 package com.zorroe.cloud.job.core.component;
 
+import com.zorroe.cloud.job.core.model.ExecutorHeartbeatRequest;
+import com.zorroe.cloud.job.core.model.ExecutorRegistryRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -20,6 +22,18 @@ public class ExecutorAutoRegister implements CommandLineRunner {
 
     @Value("${executor.name:default-executor}")
     private String name;
+
+    @Value("${executor.group:default}")
+    private String group;
+
+    @Value("${executor.app:}")
+    private String app;
+
+    @Value("${executor.version:}")
+    private String version;
+
+    @Value("${spring.application.name:}")
+    private String applicationName;
 
     @Value("${executor.address:}")
     private String configuredAddress;
@@ -50,11 +64,9 @@ public class ExecutorAutoRegister implements CommandLineRunner {
     private void register() {
         try {
             template.postForObject(
-                    adminAddress + "/executor/api/register?name={name}&address={address}",
-                    null,
-                    String.class,
-                    name,
-                    address
+                    adminAddress + "/executor/api/register",
+                    buildRegistryRequest(),
+                    String.class
             );
         } catch (Exception ignored) {
         }
@@ -66,13 +78,32 @@ public class ExecutorAutoRegister implements CommandLineRunner {
     private void beat() {
         try {
             template.postForObject(
-                    adminAddress + "/executor/api/beat?name={name}&address={address}",
-                    null,
-                    String.class,
-                    name,
-                    address
+                    adminAddress + "/executor/api/beat",
+                    buildHeartbeatRequest(),
+                    String.class
             );
         } catch (Exception ignored) {
         }
+    }
+
+    private ExecutorRegistryRequest buildRegistryRequest() {
+        ExecutorRegistryRequest request = new ExecutorRegistryRequest();
+        request.setName(name);
+        request.setAddress(address);
+        request.setGroup(StringUtils.hasText(group) ? group : "default");
+        request.setApp(StringUtils.hasText(app) ? app : (StringUtils.hasText(applicationName) ? applicationName : name));
+        request.setVersion(version);
+        request.setHandlers(JobMethodRegistry.listHandlerDefinitions());
+        return request;
+    }
+
+    private ExecutorHeartbeatRequest buildHeartbeatRequest() {
+        ExecutorHeartbeatRequest request = new ExecutorHeartbeatRequest();
+        request.setName(name);
+        request.setAddress(address);
+        request.setGroup(StringUtils.hasText(group) ? group : "default");
+        request.setApp(StringUtils.hasText(app) ? app : (StringUtils.hasText(applicationName) ? applicationName : name));
+        request.setVersion(version);
+        return request;
     }
 }

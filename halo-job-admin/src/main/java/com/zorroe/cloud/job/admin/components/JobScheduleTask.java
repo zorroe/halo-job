@@ -5,15 +5,15 @@ import com.zorroe.cloud.job.admin.model.JobTriggerSummary;
 import com.zorroe.cloud.job.admin.service.ExecutorInfoService;
 import com.zorroe.cloud.job.admin.service.JobInfoService;
 import com.zorroe.cloud.job.admin.service.JobTriggerService;
+import com.zorroe.cloud.job.admin.trigger.TriggerDispatchPlan;
+import com.zorroe.cloud.job.admin.trigger.TriggerParserManager;
 import com.zorroe.cloud.job.core.common.JobStatusEnum;
 import com.zorroe.cloud.job.core.model.TriggerTypeEnum;
-import com.zorroe.cloud.job.core.util.CronUtils;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -36,6 +36,9 @@ public class JobScheduleTask {
 
     @Resource
     private RedisUtil redisUtil;
+
+    @Resource
+    private TriggerParserManager triggerParserManager;
 
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
     private final ThreadPoolExecutor pool = new ThreadPoolExecutor(
@@ -83,14 +86,9 @@ public class JobScheduleTask {
                             continue;
                         }
 
-                        Long nextExecuteTime = CronUtils.getNextFireTimeMillis(latestJob.getCronExpression(), new Date());
-                        if (nextExecuteTime == null) {
-                            log.error("任务 [{}] 的 Cron 无法计算下次执行时间，跳过本次调度", job.getJobName());
-                            continue;
-                        }
-
-                        jobInfoService.updateNextExecuteTime(latestJob.getId(), nextExecuteTime);
-                        pool.execute(() -> executeJob(latestJob));
+                        TriggerDispatchPlan dispatchPlan = triggerParserManager.buildDispatchPlan(latestJob, currentTime);
+                        jobInfoService.updateNextExecuteTime(latestJob.getId(), dispatchPlan.getNextExecuteTimeBeforeDispatch());
+                        pool.execute(() -> executeJob(latestJob, dispatchPlan));
                     } finally {
                         redisUtil.unlock(lockKey);
                     }
@@ -103,7 +101,8 @@ public class JobScheduleTask {
         }
     }
 
-    private void executeJob(JobInfo job) {
+    private void executeJob(JobInfo job, TriggerDispatchPlan dispatchPlan) {
+        long startTime = System.currentTimeMillis();
         try {
             JobTriggerSummary summary = jobTriggerService.trigger(job, TriggerTypeEnum.SCHEDULE);
             if (summary.isSuccess()) {
@@ -113,6 +112,19 @@ public class JobScheduleTask {
             }
         } catch (Exception e) {
             log.error("任务 [{}] 调度失败", job.getJobName(), e);
+        } finally {
+            if (dispatchPlan != null && dispatchPlan.isUpdateAfterExecution()) {
+                try {
+                    Long nextExecuteTime = triggerParserManager.computeNextExecuteTimeAfterExecution(
+                            job,
+                            startTime,
+                            System.currentTimeMillis()
+                    );
+                    jobInfoService.updateNextExecuteTime(job.getId(), nextExecuteTime);
+                } catch (Exception e) {
+                    log.error("任务 [{}] 更新下次执行时间失败", job.getJobName(), e);
+                }
+            }
         }
     }
 }

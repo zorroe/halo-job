@@ -9,10 +9,8 @@ import com.zorroe.cloud.job.core.context.HaloJobContextHolder;
 import com.zorroe.cloud.job.core.model.TriggerJobRequest;
 import com.zorroe.cloud.job.core.model.TriggerJobResponse;
 import com.zorroe.cloud.job.core.model.TriggerTypeEnum;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.lang.reflect.InvocationTargetException;
@@ -35,27 +33,6 @@ public class ExecutorController {
      */
     @PostMapping("/executor/run")
     public Result<TriggerJobResponse> run(@RequestBody TriggerJobRequest request) {
-        return Result.success(execute(request));
-    }
-
-    /**
-     * 兼容旧版 GET 触发方式，内部统一转换为标准任务请求。
-     *
-     * @param handler 任务处理器名称
-     * @param param 任务参数
-     * @return 执行结果
-     */
-    @GetMapping("/executor/run")
-    public Result<TriggerJobResponse> runLegacy(
-            @RequestParam String handler,
-            @RequestParam(required = false) String param
-    ) {
-        TriggerJobRequest request = new TriggerJobRequest();
-        request.setHandler(handler);
-        request.setParam(param);
-        request.setJobName(handler);
-        request.setBlockStrategy(BlockStrategyEnum.QUEUE_WAIT.getCode());
-        request.setTriggerType(TriggerTypeEnum.MANUAL.name());
         return Result.success(execute(request));
     }
 

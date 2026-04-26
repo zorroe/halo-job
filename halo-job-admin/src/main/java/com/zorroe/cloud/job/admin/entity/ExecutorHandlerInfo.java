@@ -5,15 +5,25 @@ import lombok.Data;
 import java.util.Date;
 
 @Data
-public class ExecutorInfo {
+public class ExecutorHandlerInfo {
+
     private Long id;
+
     private String executorName;
+
     private String executorAddress;
+
     private String executorGroup;
+
     private String executorApp;
-    private String metadata;
-    private String version;
-    private Date heartbeatTime;
-    private Integer status;
-    private Date createTime;
+
+    private String handlerName;
+
+    private String handlerDesc;
+
+    private String methodSignature;
+
+    private Date updateTime;
+
+    private Long onlineExecutorCount;
 }

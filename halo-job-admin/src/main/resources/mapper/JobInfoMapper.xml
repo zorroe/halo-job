@@ -7,27 +7,37 @@
     <sql id="jobInfoColumn">
         id,
         job_name          jobName,
+        executor_group    executorGroup,
         executor_handler  executorHandler,
+        executor_app      executorApp,
         executor_param    executorParam,
         job_status        jobStatus,
+        trigger_type      triggerType,
+        trigger_config    triggerConfig,
+        next_execute_time nextExecuteTime,
+        `owner`           owner,
+        `tag`             tag,
         remark            remark,
         route_strategy    routeStrategy,
         block_strategy    blockStrategy,
         retry_count       retryCount,
         create_time       createTime,
-        update_time       updateTime,
-        cron_expression   cronExpression,
-        next_execute_time nextExecuteTime
+        update_time       updateTime
     </sql>
 
     <insert id="addJob" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO job_info (
             job_name,
+            executor_group,
             executor_handler,
+            executor_app,
             executor_param,
             job_status,
-            cron_expression,
+            trigger_type,
+            trigger_config,
             next_execute_time,
+            `owner`,
+            `tag`,
             retry_count,
             route_strategy,
             block_strategy,
@@ -37,11 +47,16 @@
         )
         VALUES (
             #{jobName},
+            #{executorGroup},
             #{executorHandler},
+            #{executorApp},
             #{executorParam},
             #{jobStatus},
-            #{cronExpression},
+            #{triggerType},
+            #{triggerConfig},
             #{nextExecuteTime},
+            #{owner},
+            #{tag},
             #{retryCount},
             #{routeStrategy},
             #{blockStrategy},
@@ -54,12 +69,17 @@
     <update id="updateJob">
         UPDATE job_info
         SET job_name          = #{jobName},
+            executor_group    = #{executorGroup},
             executor_handler  = #{executorHandler},
+            executor_app      = #{executorApp},
             executor_param    = #{executorParam},
             job_status        = #{jobStatus},
-            remark            = #{remark},
-            cron_expression   = #{cronExpression},
+            trigger_type      = #{triggerType},
+            trigger_config    = #{triggerConfig},
             next_execute_time = #{nextExecuteTime},
+            `owner`           = #{owner},
+            `tag`             = #{tag},
+            remark            = #{remark},
             retry_count       = #{retryCount},
             route_strategy    = #{routeStrategy},
             block_strategy    = #{blockStrategy},
@@ -70,6 +90,7 @@
     <update id="changeStatus">
         UPDATE job_info
         SET job_status  = #{status},
+            next_execute_time = #{nextExecuteTime},
             update_time = NOW()
         WHERE id = #{id}
     </update>
@@ -86,6 +107,7 @@
         <include refid="jobInfoColumn"/>
         FROM job_info
         WHERE job_status = 1
+          AND next_execute_time IS NOT NULL
           AND next_execute_time &lt;= #{currentTime}
         ORDER BY next_execute_time ASC
     </select>

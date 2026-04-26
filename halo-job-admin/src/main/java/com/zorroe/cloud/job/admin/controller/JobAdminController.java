@@ -1,6 +1,8 @@
 package com.zorroe.cloud.job.admin.controller;
 
+import com.zorroe.cloud.job.admin.entity.ExecutorHandlerInfo;
 import com.zorroe.cloud.job.admin.entity.JobInfo;
+import com.zorroe.cloud.job.admin.service.ExecutorInfoService;
 import com.zorroe.cloud.job.admin.service.JobInfoService;
 import com.zorroe.cloud.job.core.common.Result;
 import jakarta.annotation.Resource;
@@ -14,6 +16,9 @@ public class JobAdminController {
 
     @Resource
     private JobInfoService jobInfoService;
+
+    @Resource
+    private ExecutorInfoService executorInfoService;
 
     /**
      * 新增/修改任务
@@ -42,6 +47,14 @@ public class JobAdminController {
     @GetMapping("/list")
     public Result<List<JobInfo>> listJobs() {
         return Result.success(jobInfoService.listAllJobs());
+    }
+
+    @GetMapping("/handlers")
+    public Result<List<ExecutorHandlerInfo>> listHandlers(
+            @RequestParam(required = false) String executorGroup,
+            @RequestParam(required = false) String executorApp
+    ) {
+        return Result.success(executorInfoService.listAvailableHandlers(executorGroup, executorApp));
     }
 
     /**

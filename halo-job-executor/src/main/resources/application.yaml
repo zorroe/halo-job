@@ -8,4 +8,7 @@ spring:
 executor:
   admin: http://localhost:8080
   name: halo-job-demo-executor
+  group: default
+  app: halo-job-executor
+  version: 0.0.1-SNAPSHOT
   address: http://127.0.0.1:9090

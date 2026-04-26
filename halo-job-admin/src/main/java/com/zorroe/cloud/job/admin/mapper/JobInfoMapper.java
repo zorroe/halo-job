@@ -17,7 +17,9 @@ public interface JobInfoMapper {
 
     void updateJob(JobInfo jobInfo);
 
-    void changeStatus(Long id, Integer status);
+    void changeStatus(@Param("id") Long id,
+                      @Param("status") Integer status,
+                      @Param("nextExecuteTime") Long nextExecuteTime);
 
     /**
      * 查询已到执行时间的任务
