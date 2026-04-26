@@ -1,273 +1,449 @@
-# Halo-Job 分布式任务调度平台
+# Halo-Job
 
-## 项目简介
+Halo-Job 是一个基于 Spring Boot 3 的轻量级分布式任务调度项目，采用 `Admin（调度中心）+ Executor（执行器）` 的拆分架构，面向“任务配置集中管理、执行器分布式执行、按策略路由下发”的典型场景。
 
-Halo-Job 是一个基于 Spring Boot 3.x 开发的轻量级分布式任务调度系统，采用调度中心（Admin）和执行器（Executor）分离的架构设计，支持任务的统一管理、调度和执行。
+当前仓库已经具备一个可运行的最小闭环：
+
+- 调度中心负责任务管理、Cron 扫描、路由分发、失败重试和执行日志落库
+- 执行器通过注解声明任务，并在启动后自动向调度中心注册、持续发送心跳
+- 调度中心与执行器之间通过 HTTP 通信
+- 定时调度依赖 MySQL 持久化任务配置，依赖 Redis 做分布式锁
+
+项目更适合作为学习型项目、内部基础版调度平台原型，或者二次开发的起点。目前提供的是后端能力和示例执行器，不包含前端管理页面、权限体系和完整的生产治理能力。
+
+## 核心能力
+
+- 任务管理：支持任务新增、修改、查询、启停
+- 手动触发：支持按 `jobId` 立即触发任务
+- 自动调度：支持 Cron 表达式校验、下次触发时间计算、后台按秒扫描触发
+- 执行器注册：执行器启动后自动注册，随后每 5 秒发送一次心跳
+- 在线节点管理：调度中心维护执行器在线列表，超过 30 秒无心跳会标记离线
+- 路由策略：支持轮询、随机、首个、末尾、一致散列式 Hash、分片广播
+- 阻塞策略：支持排队等待、丢弃新任务、覆盖运行中任务
+- 失败重试：调度失败时可按任务配置进行重试
+- 执行日志：记录每次触发的执行状态、耗时、错误信息
+- 分布式调度保护：调度扫描阶段通过 Redis 锁避免同一任务被重复触发
+- 执行器 SDK：提供 `@EnableHaloJobExecutor`、`@HaloJob`、`HaloJobContext` 等接入能力
+
+## 架构说明
+
+```text
+                +----------------------+
+                |   halo-job-admin     |
+                |  调度中心 / API /    |
+                |  Cron 扫描 / 路由     |
+                +----------+-----------+
+                           |
+                           | HTTP 调度
+                           v
+        +------------------+------------------+
+        |                                     |
++-------+--------+                    +-------+--------+
+| halo-job-exec  |                    | halo-job-exec  |
+| Executor A     |                    | Executor B     |
+| @HaloJob tasks |                    | @HaloJob tasks |
++-------+--------+                    +-------+--------+
+        ^                                     ^
+        | 注册 / 心跳                          | 注册 / 心跳
+        +------------------+------------------+
+                           |
+                           v
+                +----------------------+
+                |   halo-job-admin     |
+                | executor_info 表      |
+                +----------------------+
+```
+
+admin 依赖：
+
+- MySQL：任务定义、执行器信息、执行日志
+- Redis：定时扫描互斥锁
+
+## 模块结构
+
+```text
+halo-job
+├── halo-job-admin/      调度中心
+├── halo-job-core/       公共契约 + 执行器接入 SDK
+├── halo-job-executor/   示例执行器
+├── sql/                 数据库初始化脚本
+└── pom.xml              Maven 聚合工程
+```
+
+### `halo-job-admin`
+
+调度中心，主要职责：
+
+- 提供任务管理接口
+- 扫描到期任务并触发执行
+- 根据路由策略选择执行器
+- 记录执行日志
+- 维护执行器在线状态
+
+主要入口：
+
+- `com.zorroe.cloud.job.admin.HaloJobAdminApplication`
+
+### `halo-job-core`
+
+公共模块，主要职责：
+
+- 统一响应结构 `Result`
+- 任务状态、路由策略、阻塞策略等枚举
+- 执行器自动注册组件
+- `@HaloJob` 注解扫描与方法注册
+- 执行器 HTTP 入口 `/executor/run`
+
+### `halo-job-executor`
+
+示例执行器，展示如何接入调度系统：
+
+- 使用 `@EnableHaloJobExecutor` 开启接入能力
+- 通过 `@HaloJob("handlerName")` 声明任务
+- 启动后自动注册到调度中心
+
+示例任务位于：
+
+- `com.zorroe.cloud.job.executor.schedule.DemoJobTemplate`
+
+当前内置了这些 demo handler：
+
+- `demoNoArgTask`
+- `dataSyncTask`
+- `clearLogTask`
+- `reportShardTask`
 
 ## 技术栈
 
-- **JDK**: 17+
-- **Spring Boot**: 3.5.13
-- **MyBatis**: 3.0.3
-- **数据库**: MySQL
-- **连接池**: Druid 1.2.20
-- **构建工具**: Maven
+- JDK 17
+- Spring Boot 3.5.13
+- Maven
+- MyBatis
+- MySQL
+- Redis
+- Druid
+- Quartz CronExpression
+- Lombok
+- Hutool
 
-## 项目结构
+## 已实现的任务模型
 
-```
-halo-job/
-├── halo-job-admin/          # 调度中心 - 负责任务管理和调度
-│   ├── controller/          # 控制器层
-│   ├── service/             # 服务层
-│   ├── mapper/              # 数据访问层
-│   ├── entity/              # 实体类
-│   └── config/              # 配置类
-├── halo-job-executor/       # 执行器 - 负责任务执行
-│   └── controller/          # 控制器层
-├── halo-job-core/           # 核心模块 - 公共组件和通用类
-│   └── common/              # 通用类（Result、枚举等）
-└── pom.xml                  # 父POM
-```
+`job_info` 目前支持的关键字段如下：
 
-## 模块说明
+| 字段 | 说明 |
+| --- | --- |
+| `job_name` | 任务名称 |
+| `executor_handler` | 执行器 handler 名称，需要和 `@HaloJob` 的值一致 |
+| `executor_param` | 执行参数 |
+| `job_status` | 任务状态，`0=停止`，`1=运行` |
+| `cron_expression` | Cron 表达式；为空时只支持手动触发 |
+| `next_execute_time` | 下次执行时间，服务端自动计算 |
+| `route_strategy` | 路由策略 |
+| `block_strategy` | 阻塞策略 |
+| `retry_count` | 调度失败重试次数 |
+| `remark` | 备注 |
 
-### 1. halo-job-core（核心模块）
-提供公共组件和通用类：
-- `Result`: 统一响应结果封装
-- `ResultCode`: 响应状态码定义
-- `JobStatusEnum`: 任务状态枚举（停止/运行）
+### 路由策略
 
-### 2. halo-job-admin（调度中心）
-负责任务的管理和调度：
-- 任务信息的 CRUD 操作
-- 手动触发任务执行
-- 通过 RestTemplate 调用执行器
-- 集成 MyBatis + Druid 进行数据持久化
+| 编码 | 枚举 | 说明 |
+| --- | --- | --- |
+| `1` | `ROUND` | 轮询 |
+| `2` | `RANDOM` | 随机 |
+| `3` | `FIRST` | 选择首个在线执行器 |
+| `4` | `LAST` | 选择最后一个在线执行器 |
+| `5` | `HASH` | 基于任务信息做稳定 Hash |
+| `6` | `SHARDING_BROADCAST` | 广播到所有在线执行器，并附带分片信息 |
 
-**主要接口：**
-- `GET /schedule/trigger?jobId={id}`: 手动触发指定任务
+### 阻塞策略
 
-### 3. halo-job-executor（执行器）
-负责接收调度中心的命令并执行具体任务：
-- 接收任务执行请求
-- 根据 handler 路由到具体的任务处理方法
-- 返回执行结果
+| 编码 | 枚举 | 说明 |
+| --- | --- | --- |
+| `1` | `QUEUE_WAIT` | 排队等待 |
+| `2` | `DISCARD_NEW` | 当前任务忙时丢弃新触发 |
+| `3` | `COVER_RUNNING` | 中断当前任务并用新任务覆盖 |
 
-**主要接口：**
-- `GET /executor/run?handler={name}&param={param}`: 执行指定任务
+`COVER_RUNNING` 依赖业务代码对线程中断有响应，否则旧任务未必能及时退出。
 
-## 快速开始
+## 快速启动
 
-### 环境要求
+### 1. 环境准备
 
-- JDK 17 或更高版本
+- JDK 17+
 - Maven 3.6+
-- MySQL 5.7+
+- MySQL 5.7+ 或 8.x
+- Redis 6.x+
 
-### 数据库配置
+### 2. 初始化数据库
 
-1. 创建数据库：
-```sql
-CREATE DATABASE `halo-job` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
-```
-
-2. 创建任务表：
-```sql
-CREATE TABLE `job_info` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `job_name` varchar(100) NOT NULL COMMENT '任务名称',
-  `executor_handler` varchar(100) NOT NULL COMMENT '执行器处理器',
-  `executor_param` varchar(500) DEFAULT NULL COMMENT '执行参数',
-  `job_status` tinyint NOT NULL DEFAULT '1' COMMENT '任务状态：0-停止，1-运行',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='任务信息表';
-```
-
-3. 修改配置文件中的数据库连接信息（`halo-job-admin/src/main/resources/application.yaml`）：
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://your-host:port/halo-job?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
-    username: your-username
-    password: your-password
-```
-
-### 启动步骤
-
-#### 方式一：IDE 启动
-
-1. 编译项目：
-```bash
-mvn clean install
-```
-
-2. 启动执行器（halo-job-executor）：
-   - 运行 `HaloJobExecutorApplication.java`
-   - 默认端口：9090
-
-3. 启动调度中心（halo-job-admin）：
-   - 运行 `HaloJobAdminApplication.java`
-   - 默认端口：8080
-
-#### 方式二：命令行启动
+执行仓库中的脚本：
 
 ```bash
-# 编译打包
-mvn clean package -DskipTests
-
-# 启动执行器
-java -jar halo-job-executor/target/halo-job-executor-0.0.1-SNAPSHOT.jar
-
-# 启动调度中心
-java -jar halo-job-admin/target/halo-job-admin-0.0.1-SNAPSHOT.jar
+mysql -uroot -p < sql/halo-job-init.sql
 ```
 
-### 使用示例
+脚本会创建：
 
-1. **插入测试任务数据**：
-```sql
-INSERT INTO job_info (job_name, executor_handler, executor_param, job_status) 
-VALUES ('数据同步任务', 'dataSyncTask', 'test-param', 1);
-```
+- `job_info`
+- `executor_info`
+- `job_execution_log`
 
-2. **触发任务执行**：
-```bash
-curl http://localhost:8080/schedule/trigger?jobId=1
-```
+并写入一条示例任务 `dataSyncTask`。
 
-3. **查看日志**：
-- 调度中心日志显示任务触发信息
-- 执行器日志显示任务执行过程和结果
+### 3. 修改配置
 
-## 配置说明
+请先替换仓库中现有 `application.yaml` 里的本地开发地址、用户名和密码，不要直接使用默认内容部署到其他环境。
 
-### 调度中心配置（halo-job-admin）
+#### `halo-job-admin/src/main/resources/application.yaml`
+
+参考配置：
 
 ```yaml
 server:
-  port: 8080                    # 调度中心端口
-
-executor:
-  address: http://localhost:9090  # 执行器地址
+  port: 8080
 
 spring:
+  application:
+    name: halo-job-admin
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     type: com.alibaba.druid.pool.DruidDataSource
-    url: jdbc:mysql://host:port/halo-job
-    username: xxx
-    password: xxx
+    url: jdbc:mysql://127.0.0.1:3306/halo-job?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+    username: your_mysql_user
+    password: your_mysql_password
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: your_redis_password
+      database: 0
 
 mybatis:
   mapper-locations: classpath:mapper/**/*.xml
   type-aliases-package: com.zorroe.cloud.job.admin.entity
 ```
 
-### 执行器配置（halo-job-executor）
+#### `halo-job-executor/src/main/resources/application.yaml`
+
+参考配置：
 
 ```yaml
 server:
-  port: 9090                    # 执行器端口
+  port: 9090
 
 spring:
   application:
     name: halo-job-executor
+
+executor:
+  admin: http://127.0.0.1:8080
+  name: halo-job-demo-executor
+  address: http://127.0.0.1:9090
 ```
 
-## 扩展开发
+说明：
 
-### 添加新任务
+- `executor.admin`：调度中心地址
+- `executor.name`：当前执行器名称
+- `executor.address`：调度中心回调当前执行器时使用的地址
 
-1. 在 `halo-job-executor` 的 `ExecutorController` 中添加新的任务处理方法：
+如果是跨机器部署，`executor.address` 必须填写为调度中心实际可访问到的地址，不能继续使用 `localhost`。
+
+### 4. 构建项目
+
+```bash
+mvn clean package -DskipTests
+```
+
+### 5. 启动服务
+
+推荐先启动调度中心，再启动执行器。
+
+#### 方式一：IDE 启动
+
+- 启动 `HaloJobAdminApplication`
+- 启动 `HaloJobExecutorApplication`
+
+#### 方式二：命令行启动
+
+```bash
+java -jar halo-job-admin/target/halo-job-admin-0.0.1-SNAPSHOT.jar
+java -jar halo-job-executor/target/halo-job-executor-0.0.1-SNAPSHOT.jar
+```
+
+### 6. 验证运行
+
+#### 查看在线执行器
+
+```bash
+curl http://127.0.0.1:8080/executor/api/onlineList
+```
+
+#### 查看任务列表
+
+```bash
+curl http://127.0.0.1:8080/admin/job/list
+```
+
+#### 手动触发任务
+
+```bash
+curl "http://127.0.0.1:8080/schedule/trigger?jobId=1"
+```
+
+#### 查询执行日志
+
+```bash
+curl http://127.0.0.1:8080/admin/job/log/list
+```
+
+## 主要接口
+
+### 任务管理
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/admin/job/save` | 新增或更新任务 |
+| `GET` | `/admin/job/get/{id}` | 查询任务详情 |
+| `GET` | `/admin/job/list` | 查询任务列表 |
+| `POST` | `/admin/job/changeStatus/{id}/{status}` | 修改任务状态 |
+
+### 调度与日志
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `GET` | `/schedule/trigger?jobId={id}` | 手动触发任务 |
+| `GET` | `/admin/job/log/list` | 查询执行日志 |
+
+### 执行器管理
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/executor/api/register` | 执行器注册 |
+| `POST` | `/executor/api/beat` | 执行器心跳 |
+| `GET` | `/executor/api/onlineList` | 在线执行器列表 |
+
+### 执行器内部接口
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| `POST` | `/executor/run` | 调度中心下发标准触发请求 |
+| `GET` | `/executor/run` | 兼容旧版的简单触发方式 |
+
+## 创建一个任务
+
+可以通过 `POST /admin/job/save` 创建任务，例如：
+
+```json
+{
+  "jobName": "Demo Data Sync",
+  "executorHandler": "dataSyncTask",
+  "executorParam": "tenant=demo",
+  "jobStatus": 1,
+  "cronExpression": "0 */5 * * * ?",
+  "routeStrategy": 1,
+  "blockStrategy": 1,
+  "retryCount": 1,
+  "remark": "每 5 分钟执行一次"
+}
+```
+
+说明：
+
+- `id` 为空时新增，不为空时更新
+- `cronExpression` 为空时不会自动调度，只能手动触发
+- `nextExecuteTime` 由服务端根据 Cron 自动计算，无需手工传入
+
+## 执行器接入方式
+
+如果你要新增一个业务执行器，最简单的方式是直接参考 `halo-job-executor` 模块。
+
+### 1. 启用执行器能力
 
 ```java
-@GetMapping("/run")
-public Result<String> runTask(
-        @RequestParam String handler,
-        @RequestParam(required = false) String param
-) {
-    if (handler.equals("dataSyncTask")) {
-        return Result.success(dataSyncTask(param));
-    } else if (handler.equals("yourNewTask")) {
-        return Result.success(yourNewTask(param));
+@EnableHaloJobExecutor
+@SpringBootApplication
+public class OrderExecutorApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(OrderExecutorApplication.class, args);
     }
-    return Result.fail("未知任务处理器：" + handler);
-}
-
-private String yourNewTask(String param) {
-    // 实现你的业务逻辑
-    log.info("执行新任务，参数：{}", param);
-    return "任务执行成功";
 }
 ```
 
-2. 在数据库中注册新任务：
-```sql
-INSERT INTO job_info (job_name, executor_handler, executor_param, job_status) 
-VALUES ('新任务', 'yourNewTask', 'param-value', 1);
-```
-
-3. 通过调度中心触发任务即可。
-
-### 自定义响应码
-
-在 `halo-job-core` 模块的 `ResultCode` 枚举中添加新的状态码：
+### 2. 声明任务
 
 ```java
-public enum ResultCode {
-    SUCCESS(200, "成功"),
-    FAIL(500, "失败"),
-    JOB_NOT_EXIST(404, "任务不存在"),
-    JOB_STOPPED(403, "任务已停止");
-    
-    // ... 添加新的状态码
+@Component
+public class OrderJob {
+
+    @HaloJob("orderSyncTask")
+    public void sync(String param, HaloJobContext context) {
+        System.out.println("param=" + param + ", shard=" + (context.getShardIndex() + 1) + "/" + context.getShardTotal());
+    }
 }
 ```
 
-## 架构特点
+### 3. 支持的方法签名
 
-- **模块化设计**: 核心模块、调度中心、执行器分离，便于维护和扩展
-- **RESTful API**: 基于 HTTP 协议的简洁通信方式
-- **统一响应**: 标准化的 Result 响应格式
-- **易于扩展**: 只需在执行器中添加新的处理方法即可支持新任务
-- **状态管理**: 支持任务的启停控制
+当前 `@HaloJob` 支持以下四种签名：
+
+```java
+@HaloJob("jobA")
+public void jobA()
+
+@HaloJob("jobB")
+public void jobB(String param)
+
+@HaloJob("jobC")
+public void jobC(HaloJobContext context)
+
+@HaloJob("jobD")
+public void jobD(String param, HaloJobContext context)
+```
+
+### 4. `HaloJobContext` 可获取的信息
+
+- `jobId`
+- `jobName`
+- `handler`
+- `param`
+- `shardIndex`
+- `shardTotal`
+- `executorAddress`
+- `triggerType`
+
+这对分片任务、日志补充、根据触发来源做差异处理都很有用。
+
+## 调度流程
+
+1. 执行器启动，自动向调度中心注册并持续发送心跳
+2. 调度中心从 `job_info` 中扫描到期任务
+3. 调度中心用 Redis 锁避免同一任务被重复调度
+4. 调度中心根据路由策略选择一个或多个在线执行器
+5. 调度中心通过 `/executor/run` 下发标准请求
+6. 执行器按阻塞策略串行化同一任务的执行
+7. 执行完成后，调度中心记录执行日志
 
 ## 注意事项
 
-1. 确保执行器先于调度中心启动
-2. 调度中心需要正确配置执行器的地址
-3. 任务状态为"停止"时无法触发执行
-4. 生产环境建议配置集群和高可用方案
-5. 注意数据库连接池的配置优化
+- `executor_handler` 必须和 `@HaloJob("...")` 的值完全一致
+- 执行器是否可调度，取决于 `executor.address` 是否能被 admin 访问
+- 自动调度依赖 Redis；如果 Redis 不可用，定时扫描互斥能力会失效
+- `retry_count` 只对调度失败场景有意义，不是业务级幂等重试方案
+- `COVER_RUNNING` 会尝试中断正在执行的线程，业务代码应正确响应中断
+- 当前日志接口返回全量列表，尚未实现分页
+- 当前项目没有鉴权、租户隔离和管理界面，生产使用前需要补充
 
-## 未来规划
+## 后续可扩展方向
 
-- [ ] 支持 Cron 表达式定时调度
-- [ ] 任务执行日志记录
-- [ ] 失败重试机制
-- [ ] 任务依赖关系管理
-- [ ] Web 管理界面
-- [ ] 执行器集群支持
-- [ ] 任务分片执行
-- [ ] 告警通知功能
+- 管理后台 UI
+- 权限认证与审计
+- 日志分页与检索
+- 执行结果回调增强
+- 告警通知
+- 任务依赖编排
+- 更完整的集群治理能力
 
-## 实现步骤
+## License
 
-1. 第一步（已完成）：HTTP 通信 + 调度下发 + 单机执行
-2. 第二步（已完成）：引入 MySQL，实现任务配置持久化（增删改查任务）
-3. 第三步：集成定时任务（Quartz/Spring Schedule），实现自动调度
-4. 第四步：实现执行器集群（多个执行器，调度中心负载均衡下发）
-5. 第五步：增加任务日志、失败重试、告警
-6. 第六步：增加分片任务、广播任务、阻塞处理
-7. 第七步：完善管理后台（前端页面）
-
-## 许可证
-
-本项目仅供学习和参考使用。
-
-## 联系方式
-
-如有问题或建议，欢迎提交 Issue。
+本项目当前更适合作为学习与二次开发参考，请结合你的实际场景补充部署、安全与治理能力。
